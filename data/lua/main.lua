@@ -162,8 +162,10 @@ function science.prestart()
 	if not wesnoth.get_variable("science_recruit_init") then
 		wesnoth.set_variable("science_recruit_init", true)
 		for _, side in ipairs(wesnoth.sides) do
-			wesnoth.set_variable("science_hidden_" .. side.side, table.concat(side.recruit, ","))
-			side.recruit = { "Peasant" }
+			if side.controller ~= "ai" then
+				wesnoth.set_variable("science_hidden_" .. side.side, table.concat(side.recruit, ","))
+				side.recruit = { "Peasant" }
+			end
 		end
 	end
 	for _, unit in ipairs(wesnoth.get_units {}) do
