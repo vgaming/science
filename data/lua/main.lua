@@ -172,7 +172,7 @@ function science.prestart()
 		set_ability(unit)
 	end
 	for _, side in ipairs(wesnoth.sides) do
-		side.village_gold = side.village_gold - 1
+		side.village_gold = side.village_gold - 0
 	end
 end
 
@@ -197,11 +197,7 @@ local function help_menu()
 	wesnoth.wml_actions.message {
 		speaker = "narrator",
 		message = [[
-<b>ScienceMod</b>
-
-This is an experimental add-on which adds another component to the game -- science.
-
-The implementation is VERY minimalistic and beta-quality, yet. On to details:
+<b>ScienceMod</b> features:
 
 * units have a "terr" ability.
 If the closest village to your unit is owned by enemy,
@@ -211,7 +207,6 @@ or even make fighting on enemy territory beneficial.
 
 * you can do Research advances by right-clicking anywhere on map.
 Each next advance made within same turn costs 50% more.
-If you end turn, it is reset to normal.
 Additionally, "Village Income" advances cost 2 times more for each advance.
 
 ]],
@@ -269,19 +264,19 @@ function science.menu_item()
 	local options = {
 		{
 			text = "Economy research: village income +1",
-			cost = math.floor(80 * math.pow(2, get_income())),
+			cost = math.floor(40 * math.pow(2, get_income())),
 			cost_comment = " (20 * 2^x * turn_modifier)",
 			func = village_income_menu,
 		},
 		{
 			text = "Weaponry research: new recruit",
-			cost = 10,
+			cost = 5,
 			cost_comment = " (20 * turn_modifier)",
 			func = recruit_menu,
 		},
 		{
 			text = "Tactics research: strength on enemy territory +10%",
-			cost = 20,
+			cost = 8,
 			cost_comment = " (20 * turn_modifier)",
 			func = strength_menu,
 		},
