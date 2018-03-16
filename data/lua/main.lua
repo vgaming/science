@@ -40,9 +40,6 @@ local function set_if_none(scope, value, side)
 end
 
 
-wesnoth.wml_actions.clear_menu_item {
-	id = "science_mod",
-}
 wesnoth.wml_actions.set_menu_item {
 	id = "science_mod",
 	description = "Science Mod",
@@ -184,8 +181,7 @@ end
 local function help_menu()
 	wesnoth.wml_actions.message {
 		speaker = "narrator",
-		message = [[
-<b>ScienceMod</b> features:
+		message = [[<b>ScienceMod</b> features:
 
 * you can do Research advances by right-clicking anywhere on map.
 Each next advance made within same turn costs 50% more.
