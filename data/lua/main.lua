@@ -64,20 +64,29 @@ wesnoth.wml_actions.event {
 }
 wesnoth.wml_actions.event {
 	name = "side turn end",
+	first_time_only = false,
 	T.lua { code = "science.side_turn_end()" }
 }
 wesnoth.wml_actions.event {
 	name = "prestart",
+	first_time_only = false,
 	T.lua { code = "science.prestart()" }
 }
 wesnoth.wml_actions.event {
 	name = "start",
+	first_time_only = false,
 	T.lua { code = "science.start()" }
+}
+wesnoth.wml_actions.event {
+	name = "capture",
+	first_time_only = false,
+	T.lua { code = "science.capture_event()" }
 }
 
 
 
-local closest_villages = {}
+local closest_village = {}
+local village_tiles = {}
 do
 	local width, height = wesnoth.get_map_size()
 
@@ -93,7 +102,13 @@ do
 			table.sort(villages, function(a, b)
 				return dist(x, y, a) < dist(x, y, b)
 			end)
-			closest_villages[x .. "," .. y] = villages
+			local closest = villages[1]
+			if closest then
+				local village_tile_array = village_tiles[closest[1] .. "," .. closest[2]] or {}
+				village_tile_array[#village_tile_array + 1] = { x = x, y = y }
+				village_tiles[closest[1] .. "," .. closest[2]] = village_tile_array
+			end
+			closest_village[x .. "," .. y] = closest
 		end
 	end
 end
@@ -101,15 +116,8 @@ end
 
 local function enemy_territory_xy(x, y, side)
 	--print("filtering unit", x, y)
-	for _, village in ipairs(closest_villages[x .. "," .. y]) do
-		local owner = wesnoth.get_village_owner(village[1], village[2])
-		if owner == side then
-			return false
-		elseif owner ~= nil then
-			return true
-		end
-	end
-	return false
+	local village = closest_village[x .. "," .. y]
+	return not village or wesnoth.get_village_owner(village[1], village[2]) ~= side
 end
 
 local function enemy_territory(unit)
@@ -320,6 +328,32 @@ end
 
 function science.start()
 	help_menu()
+end
+
+function science.capture_event()
+	print("village captured!!!")
+	local image = "misc/blank-hex.png~BLIT(misc/dot-white.png,30,30)"
+	--local image = "items/buckler.png"
+	--local image = "items/flower2.png"
+	local event_x1 = wesnoth.get_variable("x1")
+	local event_y1 = wesnoth.get_variable("y1")
+	local unit = wesnoth.get_unit(event_x1, event_y1)
+	local team_name = wesnoth.sides[unit.side].team_name
+	for _, tile in ipairs(village_tiles[event_x1 .. "," .. event_y1]) do
+		wesnoth.wml_actions.remove_item {
+			x = tile.x,
+			y = tile.y,
+			image = image,
+		}
+		wesnoth.wml_actions.item {
+			x = tile.x,
+			y = tile.y,
+			image = image,
+			team_name = team_name,
+			redraw = false,
+		}
+	end
+	wesnoth.wml_actions.redraw {}
 end
 
 
