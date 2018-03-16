@@ -182,7 +182,8 @@ end
 local function help_menu()
 	wesnoth.wml_actions.message {
 		speaker = "narrator",
-		message = [[<b>ScienceMod</b> features:
+		side_for = wesnoth.current.side,
+		message = [[<b>ScienceMod</b>
 
 * you can do Research advances by right-clicking anywhere on map.
 Each next advance made within same turn costs 50% more.
@@ -304,6 +305,7 @@ Village income: _village_income_
 			wesnoth.wml_actions.message {
 				speaker = "narrator",
 				message = "not enough gold",
+				side_for = wesnoth.current.side,
 			}
 			print("not enouth gold")
 		else
