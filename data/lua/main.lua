@@ -199,15 +199,13 @@ local function help_menu()
 		message = [[
 <b>ScienceMod</b> features:
 
-* units have a "terr" ability.
-If the closest village to your unit is owned by enemy,
-you will have a damage penalty. This penalty is severe at game start,
-but science advances can reduce the difference,
-or even make fighting on enemy territory beneficial.
-
 * you can do Research advances by right-clicking anywhere on map.
 Each next advance made within same turn costs 50% more.
-Additionally, "Village Income" advances cost 2 times more for each advance.
+Additionally, "Village Income" becomes 2 times more costy for each advance.
+
+* Unit damage is reduced if the closest village is owned by enemy.
+This penalty is severe at game start, but science advances
+can reduce the difference, or even make fighting on enemy territory beneficial.
 
 ]],
 	}
@@ -310,7 +308,7 @@ Village income: _village_income_
 		_village_income_ = side.village_gold,
 	})
 	local dialog_result = science.show_dialog {
-		spacer_left = "",
+		spacer_left = "\n",
 		spacer_right = "\n",
 		label = label,
 		options = options,
