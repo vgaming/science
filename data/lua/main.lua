@@ -138,47 +138,6 @@ local function set_ability(unit)
 end
 
 
-function science.prestart()
-	for _, side in ipairs(wesnoth.sides) do
-		set_if_none("strength", 0, side.side)
-		set_if_none("income", 0, side.side)
-		set_if_none("units", 0, side.side)
-		set_if_none("techs", 0, side.side)
-	end
-	if not wesnoth.get_variable("science_recruit_init") then
-		wesnoth.set_variable("science_recruit_init", true)
-		for _, side in ipairs(wesnoth.sides) do
-			if side.controller ~= "ai" and side.controller ~= "network_ai" then
-				wesnoth.set_variable("science_hidden_" .. side.side, table.concat(side.recruit, ","))
-				side.recruit = { "Peasant" }
-			end
-		end
-	end
-	for _, unit in ipairs(wesnoth.get_units {}) do
-		set_ability(unit)
-	end
-	for _, side in ipairs(wesnoth.sides) do
-		side.village_gold = side.village_gold - 0
-	end
-end
-
-function science.turn_refresh()
-	set_techs(0)
-end
-
-function science.side_turn_end()
-	for _, unit in ipairs(wesnoth.get_units { side = wesnoth.current.side }) do
-		set_ability(unit)
-	end
-end
-
-
-function science.prerecruit()
-	local unit = wesnoth.get_unit(wesnoth.get_variable("x1"), wesnoth.get_variable("y1"))
-	set_ability(unit)
-end
-
-
 local function help_menu()
 	wesnoth.wml_actions.message {
 		speaker = "narrator",
@@ -315,6 +274,47 @@ Village income: _village_income_
 				set_techs(get_techs() + 1)
 			end
 		end
+	end
+end
+
+
+function science.turn_refresh()
+	set_techs(0)
+end
+
+function science.side_turn_end()
+	for _, unit in ipairs(wesnoth.get_units { side = wesnoth.current.side }) do
+		set_ability(unit)
+	end
+end
+
+
+function science.prerecruit()
+	local unit = wesnoth.get_unit(wesnoth.get_variable("x1"), wesnoth.get_variable("y1"))
+	set_ability(unit)
+end
+
+function science.prestart()
+	for _, side in ipairs(wesnoth.sides) do
+		set_if_none("strength", 0, side.side)
+		set_if_none("income", 0, side.side)
+		set_if_none("units", 0, side.side)
+		set_if_none("techs", 0, side.side)
+	end
+	if not wesnoth.get_variable("science_recruit_init") then
+		wesnoth.set_variable("science_recruit_init", true)
+		for _, side in ipairs(wesnoth.sides) do
+			if side.controller ~= "ai" and side.controller ~= "network_ai" then
+				wesnoth.set_variable("science_hidden_" .. side.side, table.concat(side.recruit, ","))
+				side.recruit = { "Peasant" }
+			end
+		end
+	end
+	for _, unit in ipairs(wesnoth.get_units {}) do
+		set_ability(unit)
+	end
+	for _, side in ipairs(wesnoth.sides) do
+		side.village_gold = side.village_gold - 0
 	end
 end
 
