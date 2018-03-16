@@ -70,6 +70,10 @@ wesnoth.wml_actions.event {
 	name = "prestart",
 	T.lua { code = "science.prestart()" }
 }
+wesnoth.wml_actions.event {
+	name = "start",
+	T.lua { code = "science.start()" }
+}
 
 
 
@@ -311,6 +315,11 @@ Village income: _village_income_
 		end
 	end
 end
+
+function science.start()
+	help_menu()
+end
+
 
 function science.reload()
 	print("reloading...")
