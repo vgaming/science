@@ -52,18 +52,6 @@ wesnoth.wml_actions.set_menu_item {
 		}
 	}
 }
-wesnoth.wml_actions.clear_menu_item {
-	id = "deleteme",
-}
-wesnoth.wml_actions.set_menu_item {
-	id = "deleteme",
-	description = "reload()",
-	T.command {
-		T.lua {
-			code = "science.reload()"
-		}
-	}
-}
 
 wesnoth.wml_actions.event {
 	id = "science_turn_refresh",
@@ -336,6 +324,18 @@ function science.reload()
 	wesnoth.dofile("~add-ons/science/lua/utils.lua")
 	wesnoth.dofile("~add-ons/science/lua/dialog.lua")
 	wesnoth.dofile("~add-ons/science/lua/main.lua")
+	wesnoth.wml_actions.clear_menu_item {
+		id = "deleteme",
+	}
+	wesnoth.wml_actions.set_menu_item {
+		id = "deleteme",
+		description = "reload()",
+		T.command {
+			T.lua {
+				code = "science.reload()"
+			}
+		}
+	}
 end
 
 -- >>
