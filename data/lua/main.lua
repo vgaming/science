@@ -121,12 +121,9 @@ local function set_ability(unit)
 	local ability = T.leadership {
 		id = "science_mod",
 		cumulative = true,
-		name = "terr",
 		value = increase_damage,
 		affect_self = true,
 		affect_allies = false,
-		description = "This unit has " .. damage
-			.. "% damage when it's not near own village",
 		T.filter_self { lua_function = "science_enemy_territory" },
 	}
 	wesnoth.add_modification(unit, "object", {
