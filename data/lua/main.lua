@@ -39,15 +39,6 @@ local function set_if_none(scope, value, side)
 	end
 end
 
-if not wesnoth.get_variable("science_recruit_init") then
-	wesnoth.set_variable("science_recruit_init", true)
-	for _, side in ipairs(wesnoth.sides) do
-		wesnoth.set_variable("science_recruits_" .. side.side, table.concat(side.recruit, ","))
-		side.recruit = { "Peasant" }
-	end
-end
-
-
 
 wesnoth.wml_actions.clear_menu_item {
 	id = "science_mod",
@@ -61,6 +52,9 @@ wesnoth.wml_actions.set_menu_item {
 		}
 	}
 }
+wesnoth.wml_actions.clear_menu_item {
+	id = "deleteme",
+}
 wesnoth.wml_actions.set_menu_item {
 	id = "deleteme",
 	description = "reload()",
@@ -70,6 +64,7 @@ wesnoth.wml_actions.set_menu_item {
 		}
 	}
 }
+
 wesnoth.wml_actions.event {
 	id = "science_turn_refresh",
 	name = "turn refresh",
@@ -116,7 +111,7 @@ end
 
 
 local function enemy_territory_xy(x, y, side)
-	print("filtering unit", x, y)
+	--print("filtering unit", x, y)
 	for _, village in ipairs(closest_villages[x .. "," .. y]) do
 		local owner = wesnoth.get_village_owner(village[1], village[2])
 		if owner == side then
@@ -141,12 +136,11 @@ local function set_ability(unit)
 	local ability = T.leadership {
 		id = "science_mod",
 		cumulative = true,
-		name = "s" .. unit.side,
+		name = "terr",
 		value = increase_damage,
 		affect_self = true,
 		affect_allies = false,
-		description = "side" .. unit.side
-			.. "@ScienceMod. This unit has " .. damage
+		description = "This unit has " .. damage
 			.. "% damage when it's not near own village",
 		T.filter_self { lua_function = "science_enemy_territory" },
 	}
@@ -158,38 +152,25 @@ local function set_ability(unit)
 end
 
 
-for _, side in ipairs(wesnoth.sides) do
-	set_if_none("strength", 0, side.side)
-	set_if_none("income", 0, side.side)
-	set_if_none("units", 0, side.side)
-	set_if_none("techs", 0, side.side)
-end
-
-
-local function strength_menu()
-	set_strength(get_strength() + 1)
-	for _, unit in ipairs(wesnoth.get_units { side = wesnoth.current.side }) do
-		set_ability(unit)
-	end
-end
-
-local function village_income_menu()
-	set_income(get_income() + 1)
-	local side = wesnoth.sides[wesnoth.current.side]
-	side.village_gold = side.village_gold + 1
-end
-
-local function help_menu()
-	wesnoth.wml_actions.message {
-		speaker = "narrator",
-		message = "TODO: help",
-	}
-end
-
-
 function science.prestart()
+	for _, side in ipairs(wesnoth.sides) do
+		set_if_none("strength", 0, side.side)
+		set_if_none("income", 0, side.side)
+		set_if_none("units", 0, side.side)
+		set_if_none("techs", 0, side.side)
+	end
+	if not wesnoth.get_variable("science_recruit_init") then
+		wesnoth.set_variable("science_recruit_init", true)
+		for _, side in ipairs(wesnoth.sides) do
+			wesnoth.set_variable("science_hidden_" .. side.side, table.concat(side.recruit, ","))
+			side.recruit = { "Peasant" }
+		end
+	end
 	for _, unit in ipairs(wesnoth.get_units {}) do
 		set_ability(unit)
+	end
+	for _, side in ipairs(wesnoth.sides) do
+		side.village_gold = side.village_gold - 1
 	end
 end
 
@@ -210,22 +191,94 @@ function science.prerecruit()
 end
 
 
+local function help_menu()
+	wesnoth.wml_actions.message {
+		speaker = "narrator",
+		message = [[
+<b>ScienceMod</b>
+
+This is an experimental add-on which adds another component to the game -- science.
+
+The implementation is VERY minimalistic and beta-quality, yet. On to details:
+
+* units have a "terr" ability.
+If the closest village to your unit is owned by enemy,
+you will have a damage penalty. This penalty is severe at game start,
+but science advances can reduce the difference,
+or even make fighting on enemy territory beneficial.
+
+* you can do Research advances by right-clicking anywhere on map.
+Each next advance made within same turn costs 50% more.
+If you end turn, it is reset to normal.
+Additionally, "Village Income" advances cost 2 times more for each advance.
+
+]],
+	}
+end
+
+local function strength_menu()
+	set_strength(get_strength() + 1)
+	for _, unit in ipairs(wesnoth.get_units { side = wesnoth.current.side }) do
+		set_ability(unit)
+	end
+end
+
+local function village_income_menu()
+	set_income(get_income() + 1)
+	local side = wesnoth.sides[wesnoth.current.side]
+	side.village_gold = side.village_gold + 1
+end
+
+local function recruit_menu()
+	local side = wesnoth.sides[wesnoth.current.side]
+	local hidden_units = science.split_comma(wesnoth.get_variable("science_hidden_" .. side.side))
+	for i, ut_string in ipairs(hidden_units) do
+		local unit = wesnoth.unit_types[ut_string]
+		hidden_units[i] = {
+			text = unit.name,
+			image = unit.__cfg.image or "misc/blank-hex.png",
+			id = unit.id,
+		}
+	end
+	local result = science.show_dialog {
+--		spacer_left = "\n",
+--		spacer_right = "\n",
+		label = "Pick recruit",
+		options = hidden_units,
+	}
+	if result.is_ok then
+		local old_recruits = side.recruit
+		old_recruits[#old_recruits + 1] = result.id
+		side.recruit = old_recruits
+		local new_hidden = {}
+		for _, ut in ipairs(hidden_units) do
+			if ut.id ~= result.id then
+				new_hidden[#new_hidden + 1] = ut.id
+			end
+		end
+		wesnoth.set_variable("science_hidden_" .. side.side, table.concat(new_hidden, ","))
+	else
+		return false
+	end
+end
+
 function science.menu_item()
 	local side = wesnoth.sides[wesnoth.current.side]
 	local options = {
 		{
-			text = "Village income +1",
+			text = "Economy research: village income +1",
 			cost = math.floor(80 * math.pow(2, get_income())),
 			cost_comment = " (20 * 2^x * turn_modifier)",
 			func = village_income_menu,
 		},
 		{
-			text = "Research unit",
-			cost = 20,
+			text = "Weaponry research: new recruit",
+			cost = 10,
 			cost_comment = " (20 * turn_modifier)",
+			func = recruit_menu,
 		},
 		{
-			text = "Strength on enemy territory +10%",
+			text = "Tactics research: strength on enemy territory +10%",
 			cost = 20,
 			cost_comment = " (20 * turn_modifier)",
 			func = strength_menu,
@@ -252,8 +305,6 @@ Territory under cursor: _territory_
 Strength on enemy territory: _strength_%
 Village income: _village_income_
 ]]
-	--Technology cost multiplier for this turn: _cost_multiplier_%
-	--_cost_multiplier_ = math.floor(100 * cost_multiplier),
 	label = string.gsub(label, "_[a-z_]+_", {
 		_territory_ = enemy_territory_xy(wesnoth.get_variable("x1"),
 			wesnoth.get_variable("y1"),
@@ -269,25 +320,27 @@ Village income: _village_income_
 	}
 	if dialog_result.is_ok then
 		local opt = options[dialog_result.index]
-		if not opt.func then
-			print("!!! unhandled menu item ", options[dialog_result.index].text)
-		elseif opt.cost and side.gold < opt.cost then
+		if opt.cost and side.gold < opt.cost then
+			wesnoth.wml_actions.message {
+				speaker = "narrator",
+				message = "not enough gold",
+			}
 			print("not enouth gold")
 		else
-			if opt.cost then
+			local func_result = opt.func()
+			if opt.cost and func_result ~= false then
 				side.gold = side.gold - opt.cost
 				set_techs(get_techs() + 1)
 			end
-			opt.func()
 		end
-		--science.menu_item()
 	end
 end
 
 function science.reload()
+	print("reloading...")
+	wesnoth.dofile("~add-ons/science/lua/utils.lua")
 	wesnoth.dofile("~add-ons/science/lua/dialog.lua")
 	wesnoth.dofile("~add-ons/science/lua/main.lua")
-	print("reloading")
 end
 
 -- >>

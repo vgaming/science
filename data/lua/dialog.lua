@@ -1,6 +1,5 @@
 -- << science/dialog.lua
 
-science = {}
 local science = science
 local wesnoth = wesnoth
 local ipairs = ipairs
@@ -113,7 +112,11 @@ local function show_dialog_unsynchronized(settings)
 	local is_ok = dialog_exit_code == -1 and item_result >= 1
 	print(string.format("Button %s pressed (%s). Item %s selected: %s",
 		dialog_exit_code, is_ok and "ok" or "not_ok", item_result, options[item_result].text))
-	return { is_ok = is_ok, index = item_result }
+	return {
+		is_ok = is_ok,
+		id = options[item_result].id,
+		index = item_result,
+	}
 end
 
 
