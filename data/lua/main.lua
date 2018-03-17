@@ -338,9 +338,7 @@ end
 
 function science.capture_event()
 	print("village captured!!!")
-	local image = "misc/blank-hex.png~BLIT(misc/dot-white.png~SCALE(5,5),30,30)"
-	--local image = "items/buckler.png"
-	--local image = "items/flower2.png"
+	local image = "misc/blank-hex.png~BLIT(misc/dot-white.png~O(60%),30,30)" -- ~SCALE(5,5)
 	local event_x1 = wesnoth.get_variable("x1")
 	local event_y1 = wesnoth.get_variable("y1")
 	local unit = wesnoth.get_unit(event_x1, event_y1)
@@ -359,6 +357,7 @@ function science.capture_event()
 			redraw = false,
 		}
 	end
+	--wesnoth.wml_actions.allow_undo {} -- TODO: on_undo event
 	wesnoth.wml_actions.redraw {}
 end
 
