@@ -152,13 +152,12 @@ local function help_menu()
 		side_for = wesnoth.current.side,
 		message = [[<b>ScienceMod</b>
 
-* you can do Research advances by right-clicking anywhere on map.
-Each next advance made within same turn costs 50% more.
-Additionally, "Village Income" becomes 2 times more costy for each advance.
-
 * Unit damage is reduced if the closest village is owned by enemy.
 This penalty is severe at game start, but science advances
 can reduce the difference, or even make fighting on enemy territory beneficial.
+
+* Each next advance made within same turn costs 50% more.
+Additionally, "Village Income" becomes 2 times more costy for each advance.
 
 ]],
 	}
