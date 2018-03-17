@@ -328,6 +328,7 @@ function science.prestart()
 	end
 	for _, side in ipairs(wesnoth.sides) do
 		side.village_gold = side.village_gold - 0
+		side.gold = side.gold + 25
 	end
 end
 
