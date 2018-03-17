@@ -90,9 +90,9 @@ local village_tiles = {}
 do
 	local width, height = wesnoth.get_map_size()
 
-	local function dist(x, y, vill)
-		local dx = math.abs(x - vill[1])
-		local dy = math.abs(y - vill[2])
+	local function dist(x, y, vill_x, vill_y)
+		local dx = math.abs(x - vill_x)
+		local dy = math.abs(y - (x % 2) / 2 - vill_y + (vill_x % 2) / 2)
 		return dx * dx + dy * dy
 	end
 
@@ -100,7 +100,7 @@ do
 		for y = 0, height do
 			local villages = wesnoth.get_villages()
 			table.sort(villages, function(a, b)
-				return dist(x, y, a) < dist(x, y, b)
+				return dist(x, y, a[1], a[2]) < dist(x, y, b[1], b[2])
 			end)
 			local closest = villages[1]
 			if closest then
