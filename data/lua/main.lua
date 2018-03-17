@@ -215,24 +215,30 @@ function science.menu_item()
 	local options = {
 		{
 			text = "Economy research: village income +1",
+			image = "items/gold-coins-small.png~CROP(18,18,36,36)",
 			cost = math.floor(40 * math.pow(2, get_income())),
 			cost_comment = " (20 * 2^x * turn_modifier)",
 			func = village_income_menu,
 		},
 		{
 			text = "Weaponry research: new recruit",
+			image = "misc/flag-white.png",
+			--image = "misc/flag-red.png",
 			cost = 5,
 			cost_comment = " (20 * turn_modifier)",
 			func = recruit_menu,
 		},
 		{
 			text = "Tactics research: strength on enemy territory +10%",
+			image = "misc/new-battle.png",
+			--image = "items/gohere.png",
 			cost = 8,
 			cost_comment = " (20 * turn_modifier)",
 			func = strength_menu,
 		},
 		{
 			text = "Help",
+			image = "misc/qmark.png~SCALE(24,24)",
 			func = help_menu,
 		},
 	}
