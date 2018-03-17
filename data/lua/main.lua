@@ -332,7 +332,7 @@ end
 
 function science.capture_event()
 	print("village captured!!!")
-	local image = "misc/blank-hex.png~BLIT(misc/dot-white.png,30,30)"
+	local image = "misc/blank-hex.png~BLIT(misc/dot-white.png~SCALE(5,5),30,30)"
 	--local image = "items/buckler.png"
 	--local image = "items/flower2.png"
 	local event_x1 = wesnoth.get_variable("x1")
