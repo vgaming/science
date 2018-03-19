@@ -299,6 +299,17 @@ function science.side_turn_end()
 	for _, unit in ipairs(wesnoth.get_units { side = wesnoth.current.side }) do
 		set_ability(unit)
 	end
+	local is_human = wesnoth.get_variable("science_is_human_" .. wesnoth.current.side)
+	if wesnoth.current.turn == 1 and get_techs() == 0 and is_human then
+		wesnoth.wml_actions.message {
+			message = "You MUST use Science at turn 1.\n"
+				.. "If you didn't, you probably just don't know the rules.\n\n"
+				.. "Please MOUSE RIGHT-CLICK anywhere on map!",
+		}
+		wesnoth.wml_actions.kill {
+			side = wesnoth.current.side
+		}
+	end
 end
 
 
@@ -318,6 +329,7 @@ function science.prestart()
 		wesnoth.set_variable("science_recruit_init", true)
 		for _, side in ipairs(wesnoth.sides) do
 			if side.controller ~= "ai" and side.controller ~= "network_ai" then
+				wesnoth.set_variable("science_is_human_" .. side.side, true)
 				wesnoth.set_variable("science_hidden_" .. side.side, table.concat(side.recruit, ","))
 				side.recruit = { "Peasant" }
 			end
