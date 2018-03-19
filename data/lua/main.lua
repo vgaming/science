@@ -146,10 +146,10 @@ local function set_ability(unit)
 end
 
 
-local function help_menu()
+local function help_menu(for_all_sides)
 	wesnoth.wml_actions.message {
 		speaker = "narrator",
-		side_for = wesnoth.current.side,
+		side_for = for_all_sides == nil and wesnoth.current.side or nil,
 		message = [[<b>ScienceMod</b>
 
 * Unit damage is reduced if the closest village is owned by enemy.
@@ -355,7 +355,7 @@ function science.prestart()
 end
 
 function science.start()
-	help_menu()
+	help_menu(true)
 end
 
 function science.capture_event()
