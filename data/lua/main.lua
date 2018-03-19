@@ -282,6 +282,16 @@ Village income: _village_income_
 			print("not enouth gold")
 		else
 			local func_result = opt.func()
+			if science.i_am_observer() and opt.cost then
+				wesnoth.wml_actions.print {
+					text = side.name .. " has done " .. opt.text,
+					duration = 300,
+					size = 26,
+					red = 255,
+					green = 255,
+					blue = 255,
+				}
+			end
 			if opt.cost and func_result ~= false then
 				side.gold = side.gold - opt.cost
 				set_techs(get_techs() + 1)
