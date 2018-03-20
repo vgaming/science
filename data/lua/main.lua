@@ -30,7 +30,7 @@ local function set_strength(value, side) return set("strength", value, side) end
 
 local function set_income(value, side) return set("income", value, side) end
 
-local function total_strength(base_strength) return 30 + 10 * base_strength end
+local function total_strength(base_strength) return math.ceil(100 - 70 * math.pow(0.9, base_strength)) end
 
 local function set_if_none(scope, value, side)
 	local name = "science_" .. scope .. "_" .. side
@@ -152,9 +152,11 @@ local function help_menu(for_all_sides)
 		side_for = for_all_sides == nil and wesnoth.current.side or nil,
 		message = [[<b>ScienceMod</b>
 
-* Unit damage is reduced if the closest village is owned by enemy.
-This penalty is severe at game start, but science advances
-can reduce the difference, or even make fighting on enemy territory beneficial.
+* When you own a village, all nearby hexes are marked as owned by you.
+
+* Units standing on own territory always have 100% damage modifier.
+If you stand on enemy territory, your damage is reduced.
+This penalty is severe at game start, but science advances can reduce the difference.
 
 * Each next advance made within same turn costs 50% more.
 Additionally, "Village Income" becomes 2 times more costy for each advance.
@@ -228,7 +230,7 @@ function science.menu_item()
 			func = recruit_menu,
 		},
 		{
-			text = "Tactics research: strength on enemy territory +10%",
+			text = "Tactics research: enemy territory penalty -10%",
 			image = "misc/new-battle.png",
 			--image = "items/gohere.png",
 			cost = 8,
