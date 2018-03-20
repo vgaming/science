@@ -1,5 +1,5 @@
 Wesnoth add-on "Science"
 
-[Add-on description](./data/doc/about.txt)
+[Add-on description](./science/doc/about.txt)
 
 License: GPLv2+
