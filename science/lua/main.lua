@@ -11,19 +11,17 @@ local T = wesnoth.require("lua/helper.lua").set_wml_tag_metatable {}
 print("loading science/main.lua ...")
 
 local function set(scope, value, side)
-	assert(scope == "strength" or scope == "techs" or scope == "units"
+	assert(scope == "techs" or scope == "units"
 		or scope == "income" or scope == "science" or scope == "era" or scope == "total_era")
 	wesnoth.set_variable("science_" .. scope .. "_" .. (side or wesnoth.current.side), value)
 end
 
 local function get(scope, side)
-	assert(scope == "strength" or scope == "techs" or scope == "units"
+	assert(scope == "techs" or scope == "units"
 		or scope == "income" or scope == "science" or scope == "era" or scope == "total_era")
 	return wesnoth.get_variable("science_" .. scope .. "_" .. (side or wesnoth.current.side))
 end
 
-
-local function get_strength(side) return get("strength", side) end
 
 local function get_techs(side) return get("techs", side) end
 
@@ -34,14 +32,10 @@ local function get_total_era() return get("total_era", 0) end
 
 local function set_techs(value, side) return set("techs", value, side) end
 
-local function set_strength(value, side) return set("strength", value, side) end
-
 local function set_income(value, side) return set("income", value, side) end
 
 local function set_total_era(value) return set("total_era", value, 0) end
 
-
-local function total_strength(base_strength) return math.ceil(100 - 70 * math.pow(0.9, base_strength)) end
 
 local function set_if_none(scope, value, side)
 	local name = "science_" .. scope .. "_" .. side
@@ -94,73 +88,6 @@ wesnoth.wml_actions.event {
 	first_time_only = false,
 	T.lua { code = "science.start()" }
 }
-wesnoth.wml_actions.event {
-	name = "capture",
-	first_time_only = false,
-	T.lua { code = "science.capture_event()" }
-}
-
-
-
-local closest_village = {}
-local village_tiles = {}
-do
-	local width, height = wesnoth.get_map_size()
-
-	local function dist(x, y, vill_x, vill_y)
-		local dx = math.abs(x - vill_x)
-		local dy = math.abs(y - (x % 2) / 2 - vill_y + (vill_x % 2) / 2)
-		return dx * dx + dy * dy
-	end
-
-	for x = 0, width do
-		for y = 0, height do
-			local villages = wesnoth.get_villages()
-			table.sort(villages, function(a, b)
-				return dist(x, y, a[1], a[2]) < dist(x, y, b[1], b[2])
-			end)
-			local closest = villages[1]
-			if closest then
-				local village_tile_array = village_tiles[closest[1] .. "," .. closest[2]] or {}
-				village_tile_array[#village_tile_array + 1] = { x = x, y = y }
-				village_tiles[closest[1] .. "," .. closest[2]] = village_tile_array
-			end
-			closest_village[x .. "," .. y] = closest
-		end
-	end
-end
-
-
-local function enemy_territory_xy(x, y, side)
-	--print("filtering unit", x, y)
-	local village = closest_village[x .. "," .. y]
-	return not village or wesnoth.get_village_owner(village[1], village[2]) ~= side
-end
-
-local function enemy_territory(unit)
-	return enemy_territory_xy(unit.x, unit.y, unit.side)
-end
-
-science_enemy_territory = enemy_territory
-
-
-local function set_leadership(unit)
-	local damage = total_strength(get_strength())
-	local increase_damage = damage - 100
-	local ability = T.leadership {
-		id = "science_mod",
-		cumulative = true,
-		value = increase_damage,
-		affect_self = true,
-		affect_allies = false,
-		T.filter_self { lua_function = "science_enemy_territory" },
-	}
-	wesnoth.add_modification(unit, "object", {
-		id = "science_" .. damage,
-		T.effect { apply_to = "remove_ability", T.abilities { ability } },
-		T.effect { apply_to = "new_ability", T.abilities { ability } }
-	})
-end
 
 
 local function set_era_modifier(unit, diff, is_reset)
@@ -189,24 +116,17 @@ local function help_menu(for_all_sides)
 		side_for = for_all_sides == nil and wesnoth.current.side or nil,
 		message = [[<b>ScienceMod</b>
 
-* When you own a village, all nearby hexes are marked as owned by you.
+* To access Science, MOUSE RIGHT-CLICK anywhere on map when it's your turn.
 
-* If you stand on enemy territory, your damage is reduced.
-This penalty is severe at game start, but science advances can reduce the difference.
+* Each next Science advance made within same turn costs 50% more.
 
-* Each next advance made within same turn costs 50% more.
+* Negative effects are stripped off from units when they level-up.
 
-* If a unit levels up, it will lose all current modifiers and will be considered freshly recruited.
+... have fun!
 ]],
 	}
 end
 
-local function strength_menu()
-	set_strength(get_strength() + 1)
-	for _, unit in ipairs(wesnoth.get_units { side = wesnoth.current.side }) do
-		set_leadership(unit)
-	end
-end
 
 local function village_income_menu()
 	set_income(get_income() + 1)
@@ -284,15 +204,6 @@ function science.menu_item()
 			func = recruit_menu,
 		},
 		{
-			text = "Tactics",
-			effect = "Enemy territory penalty -10%",
-			image = "misc/blank-hex.png~BLIT(misc/new-battle.png,20,20)",
-			base_cost = 10,
-			tech_multiplier = 1.1,
-			tech_name = "strength",
-			func = strength_menu,
-		},
-		{
 			text = "New Era",
 			effect = "All non-leaders in game -10% damage, -10% hitpoints\n"
 				.. "All future enemy recruits -10% damage, -10% hitpoints,\n"
@@ -354,16 +265,9 @@ function science.menu_item()
 				tech_mult_string)
 		end
 	end
-	local label = [[Territory under cursor: _territory_
-Strength on enemy territory: _strength_%
-Village income: _village_income_
-]]
+	local label = [[]]
 	label = string.match(label, "^%s*(.-)%s*$")
 	label = string.gsub(label, "_[a-z_]+_", {
-		_territory_ = enemy_territory_xy(wesnoth.get_variable("x1"),
-			wesnoth.get_variable("y1"),
-			wesnoth.current.side) and "Enemy" or "Ours",
-		_strength_ = total_strength(get_strength()),
 		_village_income_ = side.village_gold,
 	})
 	local dialog_result = science.show_dialog {
@@ -410,9 +314,6 @@ function science.turn_refresh()
 end
 
 function science.side_turn_end()
-	for _, unit in ipairs(wesnoth.get_units { side = wesnoth.current.side }) do
-		set_leadership(unit)
-	end
 	local is_human = wesnoth.get_variable("science_is_human_" .. wesnoth.current.side)
 	if wesnoth.current.turn == 1 and get_techs() == 0 and is_human then
 		wesnoth.wml_actions.message {
@@ -429,7 +330,6 @@ end
 
 function science.prerecruit()
 	local unit = wesnoth.get_unit(wesnoth.get_variable("x1"), wesnoth.get_variable("y1"))
-	set_leadership(unit)
 	set_era_modifier(unit, get("era") * 2 - get_total_era(), true)
 end
 
@@ -444,7 +344,6 @@ end
 
 set_if_none("total_era", 0, 0)
 for _, side in ipairs(wesnoth.sides) do
-	set_if_none("strength", 0, side.side)
 	set_if_none("income", 0, side.side)
 	set_if_none("units", 0, side.side)
 	set_if_none("techs", 0, side.side)
@@ -461,42 +360,15 @@ function science.prestart()
 			side.gold = side.gold + 25
 		end
 	end
-	for _, unit in ipairs(wesnoth.get_units {}) do
-		set_leadership(unit)
-	end
 end
 
 function science.start()
 	help_menu(true)
 end
 
-function science.capture_event()
-	--print("village captured!!!")
-	local image = "misc/blank-hex.png~BLIT(misc/dot-white.png~O(60%),30,30)" -- ~SCALE(5,5)
-	local event_x1 = wesnoth.get_variable("x1")
-	local event_y1 = wesnoth.get_variable("y1")
-	local unit = wesnoth.get_unit(event_x1, event_y1)
-	local team_name = wesnoth.sides[unit.side].team_name
-	for _, tile in ipairs(village_tiles[event_x1 .. "," .. event_y1]) do
-		wesnoth.wml_actions.remove_item {
-			x = tile.x,
-			y = tile.y,
-			image = image,
-		}
-		wesnoth.wml_actions.item {
-			x = tile.x,
-			y = tile.y,
-			image = image,
-			team_name = team_name,
-			redraw = false,
-		}
-	end
-	--wesnoth.wml_actions.allow_undo {} -- after implementing on_undo event
-	wesnoth.wml_actions.redraw {}
-end
-
 
 function science.reload()
+	help_menu(true)
 	print("reloading...")
 	wesnoth.dofile("~add-ons/science/lua/utils.lua")
 	wesnoth.dofile("~add-ons/science/lua/dialog.lua")
