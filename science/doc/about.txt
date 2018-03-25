@@ -1,12 +1,11 @@
-This mod adds another component to the game: Science.
+This mod adds another component to the game: Science. You can spend gold to research:
 
-Current science advances:
-
-* unit recruit types. Initially you only have a Peasant recruit, but you can research more!
-* more strength on enemy territory (to avoid early unit rush, your damage on hostile territory is considerably reduced). This advance increases your strength on hostile territory.
-* village income.
+* Economy (village income +1)
+* Recruitment (new recruit type)
+* New Era (new units are stronger than old ones)
+* Fundamental Research (reduce research cost)
 
 Planned:
 
+* spying on enemies to get report on their advances?
 * share your ideas to add them here!!! Anything that avoids micro-management is a good candidate.
-* spying on enemies to get report of their advances?

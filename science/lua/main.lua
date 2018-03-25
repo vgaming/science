@@ -11,12 +11,17 @@ local T = wesnoth.require("lua/helper.lua").set_wml_tag_metatable {}
 print("loading science/main.lua ...")
 
 local function set(scope, value, side)
+	assert(scope == "strength" or scope == "techs" or scope == "units"
+		or scope == "income" or scope == "science" or scope == "era" or scope == "total_era")
 	wesnoth.set_variable("science_" .. scope .. "_" .. (side or wesnoth.current.side), value)
 end
 
 local function get(scope, side)
+	assert(scope == "strength" or scope == "techs" or scope == "units"
+		or scope == "income" or scope == "science" or scope == "era" or scope == "total_era")
 	return wesnoth.get_variable("science_" .. scope .. "_" .. (side or wesnoth.current.side))
 end
+
 
 local function get_strength(side) return get("strength", side) end
 
@@ -24,11 +29,17 @@ local function get_techs(side) return get("techs", side) end
 
 local function get_income(side) return get("income", side) end
 
+local function get_total_era() return get("total_era", 0) end
+
+
 local function set_techs(value, side) return set("techs", value, side) end
 
 local function set_strength(value, side) return set("strength", value, side) end
 
 local function set_income(value, side) return set("income", value, side) end
+
+local function set_total_era(value) return set("total_era", value, 0) end
+
 
 local function total_strength(base_strength) return math.ceil(100 - 70 * math.pow(0.9, base_strength)) end
 
@@ -61,6 +72,12 @@ wesnoth.wml_actions.event {
 	name = "prerecruit",
 	first_time_only = false,
 	T.lua { code = "science.prerecruit()" }
+}
+wesnoth.wml_actions.event {
+	id = "science_post_advance",
+	name = "post advance",
+	first_time_only = false,
+	T.lua { code = "science.post_advance_event()" }
 }
 wesnoth.wml_actions.event {
 	name = "side turn end",
@@ -127,7 +144,7 @@ end
 science_enemy_territory = enemy_territory
 
 
-local function set_ability(unit)
+local function set_leadership(unit)
 	local damage = total_strength(get_strength())
 	local increase_damage = damage - 100
 	local ability = T.leadership {
@@ -146,6 +163,26 @@ local function set_ability(unit)
 end
 
 
+local function set_era_modifier(unit, diff, is_reset)
+	if is_reset then
+		wesnoth.wml_actions.remove_object {
+			id = unit.id,
+			object_id = "science_era_modifier",
+		}
+	end
+	local increase = math.floor(100 * math.pow(10 / 9, diff) - 100)
+	local was_hitpoints = unit.hitpoints
+	wesnoth.add_modification(unit, "object", {
+		id = "science_era_modifier",
+		take_only_once = false,
+		T.effect { apply_to = "attack", increase_damage = increase .. "%" },
+		T.effect { apply_to = "hitpoints", increase_total = increase .. "%", heal_full = is_reset }, --
+	})
+	print("advancing unit", unit.id, unit.name, increase,
+		"is_reset", is_reset, "was_hp", was_hitpoints, "hp", unit.hitpoints)
+end
+
+
 local function help_menu(for_all_sides)
 	wesnoth.wml_actions.message {
 		speaker = "narrator",
@@ -154,13 +191,12 @@ local function help_menu(for_all_sides)
 
 * When you own a village, all nearby hexes are marked as owned by you.
 
-* Units standing on own territory always have 100% damage modifier.
-If you stand on enemy territory, your damage is reduced.
+* If you stand on enemy territory, your damage is reduced.
 This penalty is severe at game start, but science advances can reduce the difference.
 
 * Each next advance made within same turn costs 50% more.
-Additionally, "Village Income" becomes 2 times more costy for each advance.
 
+* If a unit levels up, it will lose all current modifiers and will be considered freshly recruited.
 ]],
 	}
 end
@@ -168,7 +204,7 @@ end
 local function strength_menu()
 	set_strength(get_strength() + 1)
 	for _, unit in ipairs(wesnoth.get_units { side = wesnoth.current.side }) do
-		set_ability(unit)
+		set_leadership(unit)
 	end
 end
 
@@ -190,8 +226,6 @@ local function recruit_menu()
 		}
 	end
 	local result = science.show_dialog {
---		spacer_left = "\n",
---		spacer_right = "\n",
 		label = "Pick recruit",
 		options = hidden_units,
 	}
@@ -206,60 +240,125 @@ local function recruit_menu()
 			end
 		end
 		wesnoth.set_variable("science_hidden_" .. side.side, table.concat(new_hidden, ","))
+		set("units", get("units") + 1)
 	else
 		return false
 	end
 end
 
+
+local function science_menu()
+	set("science", get("science") + 1)
+end
+
+
+local function era_menu()
+	set("era", get("era") + 1)
+	set_total_era(get_total_era() + 1)
+	for _, unit in ipairs(wesnoth.get_units { canrecruit = false }) do
+		set_era_modifier(unit, -1, false)
+	end
+end
+
+
 function science.menu_item()
 	local side = wesnoth.sides[wesnoth.current.side]
 	local options = {
 		{
-			text = "Economy research: village income +1",
-			image = "items/gold-coins-small.png~CROP(18,18,36,36)",
-			cost = math.floor(40 * math.pow(2, get_income())),
-			cost_comment = " (20 * 2^x * turn_modifier)",
+			text = "Economy",
+			effect = "Village income +1",
+			image = "items/gold-coins-small.png~CROP(7,0,65,72)",
+			base_cost = 40,
+			tech_multiplier = 2.0,
+			tech_name = "income",
 			func = village_income_menu,
 		},
 		{
-			text = "Weaponry research: new recruit",
-			image = "misc/flag-white.png",
+			text = "Recruitment",
+			effect = "New recruit",
+			image = "misc/blank-hex.png~BLIT(misc/flag-white.png,20,20)",
 			--image = "misc/flag-red.png",
-			cost = 5,
-			cost_comment = " (20 * turn_modifier)",
+			base_cost = 10,
+			tech_multiplier = 1.1,
+			tech_name = "units",
 			func = recruit_menu,
 		},
 		{
-			text = "Tactics research: enemy territory penalty -10%",
-			image = "misc/new-battle.png",
-			--image = "items/gohere.png",
-			cost = 8,
-			cost_comment = " (20 * turn_modifier)",
+			text = "Tactics",
+			effect = "Enemy territory penalty -10%",
+			image = "misc/blank-hex.png~BLIT(misc/new-battle.png,20,20)",
+			base_cost = 10,
+			tech_multiplier = 1.1,
+			tech_name = "strength",
 			func = strength_menu,
 		},
 		{
+			text = "New Era",
+			effect = "All non-leaders in game -10% damage, -10% hitpoints\n"
+				.. "All future enemy recruits -10% damage, -10% hitpoints,\n"
+				.. "All your future recruits +10% damage, +10% hitpoints",
+			image = "misc/blank-hex.png~BLIT(misc/new-battle.png,20,20)",
+			base_cost = 40,
+			tech_multiplier = 2.0,
+			tech_name = "era",
+			func = era_menu,
+		},
+		{
+			text = "Fundamental research",
+			effect = "Reduces future technology cost",
+			image = "icons/potion_green_small.png~SWAP(red,blue,green)",
+			base_cost = 10,
+			tech_multiplier = 0.9,
+			tech_name = "science",
+			func = science_menu
+		},
+		{
 			text = "Help",
-			image = "misc/qmark.png~SCALE(24,24)",
+			image = "misc/blank-hex.png~BLIT(misc/qmark.png~SCALE(24,24),20,20)",
 			func = help_menu,
 		},
 	}
-	local cost_multiplier = math.pow(1.5, get_techs())
+	local turn_multiplier = math.pow(1.5, get_techs())
+	local science_multiplier = 1.0
 	for _, opt in ipairs(options) do
-		if opt.cost then
-			opt.cost = math.floor(opt.cost * cost_multiplier)
-		end
-		if opt.cost and side.gold >= opt.cost then
-			opt.text = opt.text .. " | <span color='#FFE680'>cost " .. opt.cost .. "</span>"
-		elseif opt.cost then
-			opt.text = opt.text .. " | <span color='#FF0000'>cost " .. opt.cost .. "</span>"
+		if opt.tech_multiplier then
+			science_multiplier = science_multiplier * math.pow(opt.tech_multiplier, get(opt.tech_name))
 		end
 	end
-	local label = [[<b>Science Mod</b>
 
-Territory under cursor: _territory_
+	for _, opt in ipairs(options) do
+		if opt.tech_name and get(opt.tech_name) > 0 then
+			opt.text = string.format("%s (%s)", opt.text, get(opt.tech_name))
+		end
+		if opt.base_cost then
+			opt.base_cost = opt.base_cost * science_multiplier
+			opt.cost = math.floor(opt.base_cost * turn_multiplier)
+			opt.base_cost = math.floor(opt.base_cost)
+		end
+		if opt.cost then
+			local tech_mult_color = opt.tech_multiplier and opt.tech_multiplier > 1.0 and "pink" or "green"
+			local tech_mult_string = (opt.tech_multiplier == nil or opt.tech_multiplier == 1.0) and ""
+				or string.format(", <span color='%s'>future technology cost x%.1f</span>",
+				tech_mult_color,
+				opt.tech_multiplier)
+			local base_cost_string = turn_multiplier > 1
+				and string.format(" (base %s)", opt.base_cost)
+				or ""
+			local cost_color = side.gold >= opt.cost and "FFE680" or "FF0000"
+			opt.text = string.format('%s\n<span>%s</span>\n<span color="#%s">cost %s%s</span>%s',
+				opt.text,
+				opt.effect,
+				cost_color,
+				opt.cost,
+				base_cost_string,
+				tech_mult_string)
+		end
+	end
+	local label = [[Territory under cursor: _territory_
 Strength on enemy territory: _strength_%
 Village income: _village_income_
 ]]
+	label = string.match(label, "^%s*(.-)%s*$")
 	label = string.gsub(label, "_[a-z_]+_", {
 		_territory_ = enemy_territory_xy(wesnoth.get_variable("x1"),
 			wesnoth.get_variable("y1"),
@@ -268,7 +367,7 @@ Village income: _village_income_
 		_village_income_ = side.village_gold,
 	})
 	local dialog_result = science.show_dialog {
-		spacer_left = "\n",
+		spacer_left = "",
 		spacer_right = "\n",
 		label = label,
 		options = options,
@@ -299,6 +398,9 @@ Village income: _village_income_
 				set_techs(get_techs() + 1)
 			end
 		end
+		if wesnoth.compare_versions(wesnoth.game_config.version, ">=", "1.13") then
+			science.menu_item()
+		end
 	end
 end
 
@@ -309,7 +411,7 @@ end
 
 function science.side_turn_end()
 	for _, unit in ipairs(wesnoth.get_units { side = wesnoth.current.side }) do
-		set_ability(unit)
+		set_leadership(unit)
 	end
 	local is_human = wesnoth.get_variable("science_is_human_" .. wesnoth.current.side)
 	if wesnoth.current.turn == 1 and get_techs() == 0 and is_human then
@@ -327,32 +429,40 @@ end
 
 function science.prerecruit()
 	local unit = wesnoth.get_unit(wesnoth.get_variable("x1"), wesnoth.get_variable("y1"))
-	set_ability(unit)
+	set_leadership(unit)
+	set_era_modifier(unit, get("era") * 2 - get_total_era(), true)
 end
 
+function science.post_advance_event()
+	print("advancing unit, era", get("era") * 2 - get_total_era())
+	local event_x1 = wesnoth.get_variable("x1")
+	local event_y1 = wesnoth.get_variable("y1")
+	local unit = wesnoth.get_unit(event_x1, event_y1)
+	set_era_modifier(unit, get("era") * 2 - get_total_era(), true)
+end
+
+
+set_if_none("total_era", 0, 0)
+for _, side in ipairs(wesnoth.sides) do
+	set_if_none("strength", 0, side.side)
+	set_if_none("income", 0, side.side)
+	set_if_none("units", 0, side.side)
+	set_if_none("techs", 0, side.side)
+	set_if_none("science", 0, side.side)
+	set_if_none("era", 0, side.side)
+end
 function science.prestart()
 	for _, side in ipairs(wesnoth.sides) do
-		set_if_none("strength", 0, side.side)
-		set_if_none("income", 0, side.side)
-		set_if_none("units", 0, side.side)
-		set_if_none("techs", 0, side.side)
-	end
-	if not wesnoth.get_variable("science_recruit_init") then
-		wesnoth.set_variable("science_recruit_init", true)
-		for _, side in ipairs(wesnoth.sides) do
-			if side.controller ~= "ai" and side.controller ~= "network_ai" then
-				wesnoth.set_variable("science_is_human_" .. side.side, true)
-				wesnoth.set_variable("science_hidden_" .. side.side, table.concat(side.recruit, ","))
-				side.recruit = { "Peasant" }
-			end
+		if side.controller ~= "ai" and side.controller ~= "network_ai" then
+			wesnoth.set_variable("science_is_human_" .. side.side, true)
+			wesnoth.set_variable("science_hidden_" .. side.side, table.concat(side.recruit, ","))
+			side.recruit = { "Woodsman" }
+			side.village_gold = side.village_gold - 0
+			side.gold = side.gold + 25
 		end
 	end
 	for _, unit in ipairs(wesnoth.get_units {}) do
-		set_ability(unit)
-	end
-	for _, side in ipairs(wesnoth.sides) do
-		side.village_gold = side.village_gold - 0
-		side.gold = side.gold + 25
+		set_leadership(unit)
 	end
 end
 
@@ -381,7 +491,7 @@ function science.capture_event()
 			redraw = false,
 		}
 	end
-	--wesnoth.wml_actions.allow_undo {} -- TODO: on_undo event
+	--wesnoth.wml_actions.allow_undo {} -- after implementing on_undo event
 	wesnoth.wml_actions.redraw {}
 end
 
@@ -391,6 +501,7 @@ function science.reload()
 	wesnoth.dofile("~add-ons/science/lua/utils.lua")
 	wesnoth.dofile("~add-ons/science/lua/dialog.lua")
 	wesnoth.dofile("~add-ons/science/lua/main.lua")
+	science = _G.science
 	wesnoth.wml_actions.clear_menu_item {
 		id = "deleteme",
 	}
@@ -403,6 +514,7 @@ function science.reload()
 			}
 		}
 	}
+	science.menu_item()
 end
 
 -- >>
