@@ -111,12 +111,14 @@ end
 
 
 local function help_menu(for_all_sides)
-	wesnoth.wml_actions.message {
-		speaker = "narrator",
-		side_for = for_all_sides == nil and wesnoth.current.side or nil,
-		message = [[<b>ScienceMod</b>
+	print("for_all_sides == nil and wesnoth.current.side or nil", for_all_sides == nil and wesnoth.current.side or nil)
+	if for_all_sides or wesnoth.sides[wesnoth.current.side].is_local then
+		wesnoth.wml_actions.message {
+			speaker = "narrator",
+			image = "icons/potion_green_small.png~SWAP(red,blue,green)",
+			message = [[<b>ScienceMod</b>
 
-* To access Science, MOUSE RIGHT-CLICK anywhere on map when it's your turn.
+* To access Science, RIGHT-CLICK anywhere on map when it's your turn.
 
 * Each next Science advance made within same turn costs 50% more.
 
@@ -124,7 +126,8 @@ local function help_menu(for_all_sides)
 
 ... have fun!
 ]],
-	}
+		}
+	end
 end
 
 
@@ -368,7 +371,7 @@ end
 
 
 function science.reload()
-	help_menu(true)
+	help_menu()
 	print("reloading...")
 	wesnoth.dofile("~add-ons/science/lua/utils.lua")
 	wesnoth.dofile("~add-ons/science/lua/dialog.lua")
